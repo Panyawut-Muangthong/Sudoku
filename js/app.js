@@ -179,12 +179,12 @@ class SudokuApp {
         return desc;
     }
 
-    // เรนเดอร์ตารางกระดานตามขนาด (4x4 หรือ 9x9)
+    // เรนเดอร์ตารางกระดานตามขนาด (4x4 หรือ 9x9) ด้วย <input> เพื่อให้คนตาบอดพิมพ์ใส่ได้โดยตรง
     renderBoard() {
         this.boardEl.innerHTML = '';
         const ariaBoardDesc = (this.size === 4)
-            ? 'กระดานซูโดกุ 4 แถว 4 คอลัมน์ ประกอบด้วย 4 บล็อก บล็อกละ 2 คูณ 2 ใช้ปุ่มลูกศรหรือปัดหน้าจอเพื่อเลื่อนช่อง'
-            : 'กระดานซูโดกุ 9 แถว 9 คอลัมน์ ประกอบด้วย 9 บล็อก บล็อกละ 3 คูณ 3 ใช้ปุ่มลูกศรหรือปัดหน้าจอเพื่อเลื่อนช่อง';
+            ? 'กระดานซูโดกุ 4 แถว 4 คอลัมน์ ประกอบด้วย 4 บล็อก บล็อกละ 2 คูณ 2 สามารถพิมพ์ตัวเลขลงในช่องได้โดยตรง'
+            : 'กระดานซูโดกุ 9 แถว 9 คอลัมน์ ประกอบด้วย 9 บล็อก บล็อกละ 3 คูณ 3 สามารถพิมพ์ตัวเลขลงในช่องได้โดยตรง';
         this.boardEl.setAttribute('aria-label', ariaBoardDesc);
 
         for (let r = 0; r < this.size; r++) {
@@ -193,8 +193,14 @@ class SudokuApp {
             rowEl.setAttribute('role', 'row');
 
             for (let c = 0; c < this.size; c++) {
-                const cellEl = document.createElement('button');
-                cellEl.type = 'button';
+                const cellEl = document.createElement('input');
+                cellEl.type = 'text';
+                cellEl.inputMode = 'numeric';
+                cellEl.pattern = '[0-9]*';
+                cellEl.maxLength = 1;
+                cellEl.autocomplete = 'off';
+                cellEl.autocorrect = 'off';
+                cellEl.spellcheck = false;
                 cellEl.className = 'sudoku-cell';
                 cellEl.id = `cell-${r}-${c}`;
                 cellEl.setAttribute('role', 'gridcell');
@@ -203,8 +209,20 @@ class SudokuApp {
                 cellEl.setAttribute('aria-rowindex', r + 1);
                 cellEl.setAttribute('aria-colindex', c + 1);
 
-                // ทุกช่องต้องมี tabIndex = 0 เพื่อให้การปัดหน้าจอ (Swipe) ใน TalkBack / VoiceOver เข้าถึงได้ทุกช่อง!
+                // ทุกช่องมี tabIndex = 0 เพื่อให้ปัดหน้าจอ (Swipe) หรือกด Tab เข้าถึงได้ทุกช่อง
                 cellEl.tabIndex = 0;
+
+                const val = this.puzzle[r][c];
+                const isGiven = this.initialClues[r][c];
+
+                if (isGiven) {
+                    cellEl.readOnly = true;
+                    cellEl.setAttribute('aria-readonly', 'true');
+                    cellEl.classList.add('cell-given');
+                    cellEl.value = val;
+                } else {
+                    cellEl.value = (val !== 0) ? val : '';
+                }
 
                 cellEl.setAttribute('aria-label', this.getCellAriaLabel(r, c));
                 cellEl.setAttribute('aria-selected', (r === this.selectedRow && c === this.selectedCol) ? 'true' : 'false');
@@ -217,42 +235,44 @@ class SudokuApp {
                     cellEl.classList.add('border-bottom-thick');
                 }
 
-                const val = this.puzzle[r][c];
-                const isGiven = this.initialClues[r][c];
-
-                if (isGiven) {
-                    cellEl.classList.add('cell-given');
-                    cellEl.setAttribute('aria-readonly', 'true');
-                }
-
-                const valueSpan = document.createElement('span');
-                valueSpan.className = 'cell-value';
-                valueSpan.setAttribute('aria-hidden', 'true');
-                valueSpan.textContent = val !== 0 ? val : '';
-                cellEl.appendChild(valueSpan);
-
-                // กริดโน้ต
-                const notesGrid = document.createElement('div');
-                notesGrid.className = 'cell-notes';
-                notesGrid.setAttribute('aria-hidden', 'true');
-                for (let n = 1; n <= this.size; n++) {
-                    const noteSpan = document.createElement('span');
-                    noteSpan.className = `note-item note-${n}`;
-                    noteSpan.textContent = this.notes[r][c].has(n) ? n : '';
-                    notesGrid.appendChild(noteSpan);
-                }
-                cellEl.appendChild(notesGrid);
-
-                // Event focus: ทำงานทันทีเมื่อผู้ใช้กด Tab หรือคนตาบอด "ปัดหน้าจอ" (Swipe) ผ่าน TalkBack / VoiceOver!
+                // Focus event: ทำงานทันทีเมื่อกด Tab หรือปัดหน้าจอ (Swipe ใน TalkBack/VoiceOver)
                 cellEl.addEventListener('focus', () => {
                     if (this.selectedRow !== r || this.selectedCol !== c) {
                         this.selectCell(r, c, true, false);
                     }
                 });
 
-                // Event click: สำหรับการแตะหน้าจอ หรือ Double Tap ใน TalkBack / VoiceOver
+                // Click / Tap event: แตะเพื่อเลือกและไฮไลต์พร้อมพิมพ์ทับได้ทันที
                 cellEl.addEventListener('click', () => {
-                    this.selectCell(r, c, true, true);
+                    this.selectCell(r, c, true, false);
+                    if (!isGiven) {
+                        cellEl.select();
+                    }
+                });
+
+                // Input event: เมื่อคนตาบอดพิมพ์ตัวเลขผ่านแป้นพิมพ์มือถือ (Gboard/iOS) หรือแป้นคอม!
+                cellEl.addEventListener('input', () => {
+                    if (isGiven) {
+                        cellEl.value = val;
+                        return;
+                    }
+                    const text = cellEl.value.trim();
+                    if (!text) {
+                        this.eraseCell();
+                        return;
+                    }
+
+                    // เอาตัวอักษรตัวล่าสุดที่พิมพ์
+                    const char = text.slice(-1);
+                    const digit = parseInt(char, 10);
+
+                    if (!isNaN(digit) && digit >= 1 && digit <= this.size) {
+                        this.inputNumber(digit);
+                    } else {
+                        cellEl.value = (this.puzzle[r][c] !== 0) ? this.puzzle[r][c] : '';
+                        this.tts.speak(`โหมดนี้ใส่ได้เฉพาะเลข 1 ถึง ${this.size} เท่านั้น`, false);
+                        this.audio.playMistake();
+                    }
                 });
 
                 rowEl.appendChild(cellEl);
@@ -469,6 +489,11 @@ class SudokuApp {
 
             if (this.engine.isGameWon(this.puzzle, this.solution, this.size)) {
                 this.handleGameWon();
+            } else {
+                // ขยับเคอร์เซอร์ไปช่องว่างถัดไปให้อัตโนมัติ (Auto-Advance) เพื่อให้คนตาบอดพิมพ์ต่อเนื่องได้ทันที!
+                setTimeout(() => {
+                    this.moveToNextEmptyCell(r, c);
+                }, 350);
             }
         } else {
             this.mistakes++;
@@ -666,21 +691,42 @@ class SudokuApp {
         }
     }
 
+    // เลื่อนเคอร์เซอร์ไปยังช่องว่างถัดไปให้อัตโนมัติ (Auto-Advance) เพื่อให้คนตาบอดพิมพ์ต่อเนื่องได้ทันที
+    moveToNextEmptyCell(fromRow, fromCol) {
+        if (this.isGameWon || this.isGameOver) return false;
+
+        // วนหาช่องว่างจากตำแหน่งปัจจุบันไปจนถึงช่องสุดท้าย
+        for (let i = fromRow * this.size + fromCol + 1; i < this.size * this.size; i++) {
+            const nr = Math.floor(i / this.size);
+            const nc = i % this.size;
+            if (this.puzzle[nr][nc] === 0) {
+                this.selectCell(nr, nc, true, true);
+                const nextInput = document.getElementById(`cell-${nr}-${nc}`);
+                if (nextInput) nextInput.select();
+                return true;
+            }
+        }
+        // ถ้าไม่พบ ลองวนหาจากช่องแรกของกระดาน
+        for (let i = 0; i <= fromRow * this.size + fromCol; i++) {
+            const nr = Math.floor(i / this.size);
+            const nc = i % this.size;
+            if (this.puzzle[nr][nc] === 0) {
+                this.selectCell(nr, nc, true, true);
+                const nextInput = document.getElementById(`cell-${nr}-${nc}`);
+                if (nextInput) nextInput.select();
+                return true;
+            }
+        }
+        return false;
+    }
+
     // ปรับปรุง DOM ของเซลล์เดี่ยวให้ตรงกับ State
     updateCellDOM(r, c) {
         const cell = document.getElementById(`cell-${r}-${c}`);
         if (!cell) return;
 
         const val = this.puzzle[r][c];
-        const valSpan = cell.querySelector('.cell-value');
-        if (valSpan) valSpan.textContent = val !== 0 ? val : '';
-
-        const noteItems = cell.querySelectorAll('.note-item');
-        noteItems.forEach((item, idx) => {
-            const num = idx + 1;
-            item.textContent = (val === 0 && this.notes[r][c].has(num)) ? num : '';
-        });
-
+        cell.value = (val !== 0) ? val : '';
         cell.setAttribute('aria-label', this.getCellAriaLabel(r, c));
     }
 

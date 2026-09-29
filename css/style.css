@@ -390,6 +390,7 @@ body.high-contrast .mode-tab-btn .mode-tag {
     display: flex;
     align-items: center;
     justify-content: center;
+    text-align: center;
     background: transparent;
     border: none;
     border-right: 1px solid var(--border-light);
@@ -397,12 +398,30 @@ body.high-contrast .mode-tab-btn .mode-tag {
     padding: 0;
     margin: 0;
     font: inherit;
-    color: inherit;
+    font-size: calc(var(--board-size) / 16);
+    font-weight: 500;
+    color: var(--cell-user-text);
     cursor: pointer;
     transition: background-color 0.1s ease;
-    user-select: none;
+    user-select: auto;
+    -webkit-user-select: auto;
     -webkit-tap-highlight-color: transparent;
     outline: none;
+    caret-color: var(--primary-blue);
+    -webkit-appearance: none;
+    -moz-appearance: textfield;
+}
+
+.sudoku-cell::-webkit-outer-spin-button,
+.sudoku-cell::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.sudoku-cell.cell-given {
+    color: var(--cell-given-text);
+    font-weight: 700;
+    cursor: default;
 }
 
 .sudoku-cell:focus-visible,
@@ -410,6 +429,7 @@ body.high-contrast .mode-tab-btn .mode-tag {
     outline: 3px solid var(--primary-blue) !important;
     outline-offset: -3px;
     z-index: 5;
+    background-color: var(--cell-selected);
 }
 
 .sudoku-cell:last-child {
