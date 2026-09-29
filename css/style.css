@@ -1,0 +1,766 @@
+/* ==========================================================================
+   Accessible Thai Sudoku - Stylesheet (Inspired by Sudoku.com/th)
+   ========================================================================== */
+
+:root {
+    --primary-blue: #325aaf;
+    --primary-blue-hover: #244283;
+    --primary-light-blue: #e8f0fe;
+    --text-main: #344861;
+    --text-muted: #728096;
+    --border-light: #bec6d4;
+    --border-thick: #344861;
+    --bg-page: #f8fafc;
+    --bg-surface: #ffffff;
+
+    /* Cell Highlights */
+    --cell-selected: #b3d8ff;
+    --cell-highlighted: #e8f1fa;
+    --cell-same-number: #cbe3fb;
+    --cell-error-bg: #fee2e2;
+    --cell-error-text: #dc2626;
+    --cell-given-text: #1e293b;
+    --cell-user-text: #2563eb;
+    --cell-note-text: #64748b;
+
+    /* Font stack */
+    --font-family: 'Sarabun', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --board-size: min(92vw, 480px);
+}
+
+/* Base Reset & Typography */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: var(--font-family);
+    background-color: var(--bg-page);
+    color: var(--text-main);
+    line-height: 1.5;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* Hidden elements for Screen Readers */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+}
+
+/* ==========================================================================
+   Header & Navigation
+   ========================================================================== */
+.site-header {
+    background-color: var(--bg-surface);
+    border-bottom: 1px solid var(--border-light);
+    padding: 0.75rem 1rem;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.header-container {
+    max-width: 800px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.logo-area {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+    color: var(--text-main);
+}
+
+.logo-icon {
+    width: 32px;
+    height: 32px;
+}
+
+.logo-text {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.logo-text span {
+    color: var(--primary-blue);
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Utility & Icon Buttons */
+.btn-icon {
+    background: transparent;
+    border: 1px solid var(--border-light);
+    color: var(--text-main);
+    padding: 0.4rem 0.65rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    transition: all 0.15s ease;
+}
+
+.btn-icon:hover, .btn-icon:focus-visible {
+    background-color: var(--primary-light-blue);
+    border-color: var(--primary-blue);
+    outline: none;
+}
+
+.btn-icon.btn-off {
+    opacity: 0.5;
+    text-decoration: line-through;
+}
+
+.btn-icon.active {
+    background-color: var(--primary-blue);
+    color: #ffffff;
+    border-color: var(--primary-blue);
+}
+
+/* New Game Button & Dropdown */
+.new-game-wrapper {
+    position: relative;
+}
+
+.btn-primary {
+    background-color: var(--primary-blue);
+    color: #ffffff;
+    border: none;
+    font-weight: 600;
+    padding: 0.55rem 1.1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: background-color 0.15s ease;
+}
+
+.btn-primary:hover, .btn-primary:focus-visible {
+    background-color: var(--primary-blue-hover);
+    outline: 2px solid var(--primary-blue);
+    outline-offset: 2px;
+}
+
+.dropdown-menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-light);
+    border-radius: 10px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+    width: 170px;
+    z-index: 100;
+    overflow: hidden;
+    padding: 0.35rem 0;
+}
+
+.dropdown-menu.hidden {
+    display: none;
+}
+
+.dropdown-item {
+    width: 100%;
+    text-align: left;
+    padding: 0.6rem 1rem;
+    background: transparent;
+    border: none;
+    font-size: 0.95rem;
+    font-family: inherit;
+    color: var(--text-main);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: background-color 0.1s ease;
+}
+
+.dropdown-item:hover, .dropdown-item:focus-visible {
+    background-color: var(--primary-light-blue);
+    color: var(--primary-blue);
+    font-weight: 600;
+    outline: none;
+}
+
+/* ==========================================================================
+   Main Game Container & Info Bar
+   ========================================================================== */
+.main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem 0.5rem 2rem;
+    max-width: 800px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.game-info-bar {
+    width: var(--board-size);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+    font-size: 0.95rem;
+    color: var(--text-muted);
+}
+
+.info-item {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.info-item .val {
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.btn-pause {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 1.05rem;
+    color: var(--primary-blue);
+    padding: 0.1rem 0.3rem;
+    border-radius: 4px;
+}
+
+.btn-pause:hover, .btn-pause:focus-visible {
+    background-color: var(--primary-light-blue);
+    outline: none;
+}
+
+/* Smart Hint Banner */
+.hint-banner {
+    width: var(--board-size);
+    background-color: #f0fdf4;
+    border: 1px solid #86efac;
+    color: #166534;
+    padding: 0.65rem 0.85rem;
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
+    font-size: 0.9rem;
+    animation: fadeIn 0.3s ease;
+}
+
+.hint-banner.hidden {
+    display: none;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ==========================================================================
+   Sudoku Board 9x9
+   ========================================================================== */
+.board-wrapper {
+    position: relative;
+    width: var(--board-size);
+    height: var(--board-size);
+    background-color: var(--bg-surface);
+    border: 3px solid var(--border-thick);
+    border-radius: 4px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
+    overflow: hidden;
+}
+
+.sudoku-board {
+    display: grid;
+    grid-template-rows: repeat(9, 1fr);
+    width: 100%;
+    height: 100%;
+}
+
+.sudoku-row {
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+    width: 100%;
+}
+
+.sudoku-cell {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-right: 1px solid var(--border-light);
+    border-bottom: 1px solid var(--border-light);
+    cursor: pointer;
+    transition: background-color 0.1s ease;
+    user-select: none;
+}
+
+.sudoku-cell:last-child {
+    border-right: none;
+}
+
+.sudoku-row:last-child .sudoku-cell {
+    border-bottom: none;
+}
+
+/* 3x3 Block Thick Borders */
+.sudoku-cell.border-right-thick {
+    border-right: 3px solid var(--border-thick);
+}
+
+.sudoku-cell.border-bottom-thick {
+    border-bottom: 3px solid var(--border-thick);
+}
+
+/* Cell States & Highlights */
+.sudoku-cell.highlighted {
+    background-color: var(--cell-highlighted);
+}
+
+.sudoku-cell.same-number {
+    background-color: var(--cell-same-number);
+}
+
+.sudoku-cell.selected {
+    background-color: var(--cell-selected) !important;
+    outline: 2px solid var(--primary-blue);
+    outline-offset: -2px;
+    z-index: 2;
+}
+
+.sudoku-cell.cell-error {
+    background-color: var(--cell-error-bg) !important;
+}
+
+.sudoku-cell.cell-error .cell-value {
+    color: var(--cell-error-text) !important;
+}
+
+/* Cell Content */
+.cell-value {
+    font-size: calc(var(--board-size) / 16);
+    font-weight: 500;
+    color: var(--cell-user-text);
+    z-index: 1;
+}
+
+.cell-given .cell-value {
+    color: var(--cell-given-text);
+    font-weight: 700;
+}
+
+/* 3x3 Mini Grid for Pencil Notes */
+.cell-notes {
+    position: absolute;
+    inset: 2px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    pointer-events: none;
+}
+
+.note-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: calc(var(--board-size) / 40);
+    color: var(--cell-note-text);
+    font-weight: 600;
+    line-height: 1;
+}
+
+/* Pause Overlay */
+.pause-overlay {
+    position: absolute;
+    inset: 0;
+    background-color: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(4px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    z-index: 20;
+    cursor: pointer;
+}
+
+.pause-overlay.hidden {
+    display: none;
+}
+
+.pause-icon-big {
+    width: 64px;
+    height: 64px;
+    color: var(--primary-blue);
+}
+
+.pause-text {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+/* ==========================================================================
+   Action Controls (Undo, Erase, Notes, Hint)
+   ========================================================================== */
+.action-controls {
+    width: var(--board-size);
+    display: flex;
+    justify-content: space-between;
+    margin: 1.1rem 0;
+}
+
+.action-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--text-main);
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 500;
+    padding: 0.4rem 0.6rem;
+    border-radius: 8px;
+    transition: all 0.15s ease;
+    position: relative;
+    min-width: 64px;
+}
+
+.action-btn:hover, .action-btn:focus-visible {
+    background-color: var(--primary-light-blue);
+    outline: none;
+}
+
+.action-btn .btn-icon-svg {
+    width: 28px;
+    height: 28px;
+    color: var(--primary-blue);
+}
+
+.action-btn.active {
+    background-color: var(--primary-light-blue);
+}
+
+.action-btn.active .btn-icon-svg {
+    color: var(--primary-blue);
+}
+
+.badge-notes-mode {
+    position: absolute;
+    top: 2px;
+    right: 6px;
+    background-color: var(--primary-blue);
+    color: #ffffff;
+    font-size: 0.65rem;
+    padding: 1px 4px;
+    border-radius: 6px;
+    font-weight: 700;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.action-btn.active .badge-notes-mode {
+    opacity: 1;
+}
+
+/* ==========================================================================
+   Numpad (1 - 9)
+   ========================================================================== */
+.numpad-container {
+    width: var(--board-size);
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+    gap: 6px;
+}
+
+.numpad-btn {
+    aspect-ratio: 1 / 1.35;
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.12s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.numpad-btn:hover, .numpad-btn:focus-visible {
+    background-color: var(--primary-light-blue);
+    border-color: var(--primary-blue);
+    transform: translateY(-2px);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.08);
+    outline: none;
+}
+
+.numpad-btn .num-val {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--primary-blue);
+    line-height: 1;
+}
+
+.numpad-btn .num-remaining {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+.numpad-btn.completed {
+    opacity: 0.25;
+    cursor: default;
+    pointer-events: none;
+    border-color: transparent;
+}
+
+/* ==========================================================================
+   Accessibility & High Contrast Theme (WCAG AAA)
+   ========================================================================== */
+body.high-contrast {
+    --bg-page: #000000;
+    --bg-surface: #121212;
+    --text-main: #ffffff;
+    --text-muted: #e0e0e0;
+    --border-light: #555555;
+    --border-thick: #ffff00;
+    --primary-blue: #ffff00;
+    --primary-blue-hover: #ffee55;
+    --primary-light-blue: #222200;
+
+    --cell-selected: #004488;
+    --cell-highlighted: #262626;
+    --cell-same-number: #333300;
+    --cell-error-bg: #880000;
+    --cell-error-text: #ffffff;
+    --cell-given-text: #ffff00;
+    --cell-user-text: #00ffff;
+    --cell-note-text: #00ff00;
+}
+
+body.high-contrast .site-header {
+    border-bottom: 2px solid #ffff00;
+}
+
+body.high-contrast .btn-icon,
+body.high-contrast .numpad-btn,
+body.high-contrast .dropdown-menu {
+    border: 2px solid #ffff00;
+    background-color: #121212;
+    color: #ffffff;
+}
+
+body.high-contrast .numpad-btn .num-val {
+    color: #00ffff;
+}
+
+body.high-contrast .numpad-btn .num-remaining {
+    color: #ffff00;
+}
+
+body.high-contrast .btn-primary {
+    background-color: #ffff00;
+    color: #000000;
+    font-weight: 700;
+}
+
+body.high-contrast .action-btn {
+    color: #ffffff;
+}
+
+body.high-contrast .action-btn .btn-icon-svg {
+    color: #ffff00;
+}
+
+/* ==========================================================================
+   Modals & Dialogs
+   ========================================================================== */
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 1rem;
+    animation: fadeIn 0.2s ease;
+}
+
+.modal-backdrop.hidden {
+    display: none;
+}
+
+.modal-card {
+    background-color: var(--bg-surface);
+    border-radius: 12px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    width: 100%;
+    max-width: 440px;
+    padding: 1.75rem;
+    text-align: center;
+    border: 1px solid var(--border-light);
+}
+
+body.high-contrast .modal-card {
+    border: 2px solid #ffff00;
+}
+
+.modal-icon-big {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 1rem;
+}
+
+.modal-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    color: var(--text-main);
+}
+
+.modal-desc {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    margin-bottom: 1.5rem;
+}
+
+.modal-stats {
+    display: flex;
+    justify-content: space-around;
+    background-color: var(--bg-page);
+    padding: 0.75rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+}
+
+.modal-stat-item .stat-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.modal-stat-item .stat-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--primary-blue);
+}
+
+.modal-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+
+/* Keyboard Help List */
+.keyboard-help-list {
+    text-align: left;
+    margin: 1rem 0 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    max-height: 280px;
+    overflow-y: auto;
+    padding-right: 0.25rem;
+}
+
+.help-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.9rem;
+    padding: 0.3rem 0;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.help-key {
+    background-color: var(--bg-page);
+    border: 1px solid var(--border-light);
+    border-radius: 4px;
+    padding: 0.15rem 0.45rem;
+    font-size: 0.82rem;
+    font-family: monospace;
+    font-weight: 600;
+}
+
+body.high-contrast .help-key {
+    background-color: #333333;
+    border-color: #ffff00;
+    color: #ffff00;
+}
+
+/* ==========================================================================
+   Responsive Adaptations
+   ========================================================================== */
+@media (max-width: 480px) {
+    .site-header {
+        padding: 0.5rem 0.75rem;
+    }
+
+    .logo-text {
+        font-size: 1.15rem;
+    }
+
+    .btn-icon {
+        padding: 0.35rem 0.5rem;
+        font-size: 0.85rem;
+    }
+
+    .action-controls {
+        margin: 0.75rem 0;
+    }
+
+    .action-btn {
+        min-width: 50px;
+        padding: 0.3rem 0.4rem;
+        font-size: 0.75rem;
+    }
+
+    .action-btn .btn-icon-svg {
+        width: 24px;
+        height: 24px;
+    }
+
+    .numpad-container {
+        gap: 4px;
+    }
+
+    .numpad-btn .num-val {
+        font-size: 1.25rem;
+    }
+}

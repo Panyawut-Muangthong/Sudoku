@@ -1,0 +1,20 @@
+{
+  "name": "accessible-thai-sudoku",
+  "version": "1.0.0",
+  "description": "Thai Sudoku web game modeled after Sudoku.com, fully accessible for blind and visually impaired players",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve ."
+  },
+  "keywords": [
+    "sudoku",
+    "thai",
+    "accessibility",
+    "screen-reader",
+    "a11y",
+    "web-audio",
+    "tts"
+  ],
+  "author": "",
+  "license": "MIT"
+}

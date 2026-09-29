@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ซูโดกุออนไลน์ - เล่นซูโดกุฟรีพร้อมระบบเข้าถึงสำหรับทุกคน</title>
+    <meta name="description" content="เล่นซูโดกุฟรีภาษาไทย สไตล์ Sudoku.com พร้อมระบบเสียงอ่านหน้าจอและแป้นพิมพ์สำหรับผู้พิการทางสายตา (Screen Reader & Accessible Audio UI)">
+    
+    <!-- Google Fonts: Sarabun for Thai Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- ARIA Live Regions for Screen Readers (NVDA, VoiceOver, JAWS, TalkBack) -->
+    <div id="aria-live-polite" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+    <div id="aria-live-assertive" class="sr-only" aria-live="assertive" aria-atomic="true"></div>
+
+    <!-- Header Navigation -->
+    <header class="site-header" role="banner">
+        <div class="header-container">
+            <a href="#" class="logo-area" aria-label="Sudoku ภาษาไทย หน้าหลัก">
+                <svg class="logo-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="2" y="2" width="28" height="28" rx="4" stroke="#325aaf" stroke-width="2.5" fill="#f8fafc"/>
+                    <line x1="11.3" y1="2" x2="11.3" y2="30" stroke="#325aaf" stroke-width="2"/>
+                    <line x1="20.7" y1="2" x2="20.7" y2="30" stroke="#325aaf" stroke-width="2"/>
+                    <line x1="2" y1="11.3" x2="30" y2="11.3" stroke="#325aaf" stroke-width="2"/>
+                    <line x1="2" y1="20.7" x2="30" y2="20.7" stroke="#325aaf" stroke-width="2"/>
+                    <text x="6" y="24" font-family="sans-serif" font-size="12" font-weight="bold" fill="#325aaf">9</text>
+                    <text x="14" y="16" font-family="sans-serif" font-size="12" font-weight="bold" fill="#2563eb">4</text>
+                </svg>
+                <span class="logo-text">Sudoku<span>.th</span></span>
+            </a>
+
+            <!-- Accessibility & Audio Toggles -->
+            <div class="header-actions">
+                <button id="btn-toggle-tts" class="btn-icon" title="เปิด/ปิดเสียงบรรยายภาษาไทย (Web Speech TTS)" aria-label="เปิดปิดเสียงบรรยายภาษาไทย">
+                    <span aria-hidden="true">🔊</span>
+                    <span>เสียงบรรยาย</span>
+                </button>
+
+                <button id="btn-toggle-sound" class="btn-icon" title="เปิด/ปิดเสียงเอฟเฟกต์ (Audio Effects)" aria-label="เปิดปิดเอฟเฟกต์เสียง">
+                    <span aria-hidden="true">🎵</span>
+                    <span>เอฟเฟกต์</span>
+                </button>
+
+                <button id="btn-toggle-contrast" class="btn-icon" title="โหมดคอนทราสต์สูงสำหรับผู้มีปัญหาการมองเห็น" aria-label="สลับโหมดคอนทราสต์สูง">
+                    <span aria-hidden="true">👁️</span>
+                    <span>คอนทราสต์</span>
+                </button>
+
+                <button id="btn-help" class="btn-icon" title="คู่มือปุ่มลัดแป้นพิมพ์ (กดปุ่ม ? หรือ F1 ได้ทุกเมื่อ)" aria-label="คู่มือปุ่มลัดแป้นพิมพ์">
+                    <span aria-hidden="true">⌨️</span>
+                    <span>ปุ่มลัด</span>
+                </button>
+
+                <!-- New Game Dropdown -->
+                <div class="new-game-wrapper">
+                    <button id="btn-new-game-main" class="btn-primary" aria-haspopup="true" aria-expanded="false" aria-label="เมนูเริ่มเกมใหม่และเลือกระดับความยาก">
+                        <span>เกมใหม่</span>
+                        <span aria-hidden="true">▼</span>
+                    </button>
+                    <div id="new-game-dropdown" class="dropdown-menu hidden" role="menu">
+                        <button class="dropdown-item diff-select-btn" data-difficulty="easy" role="menuitem">ง่าย</button>
+                        <button class="dropdown-item diff-select-btn" data-difficulty="medium" role="menuitem">ปานกลาง</button>
+                        <button class="dropdown-item diff-select-btn" data-difficulty="hard" role="menuitem">ยาก</button>
+                        <button class="dropdown-item diff-select-btn" data-difficulty="expert" role="menuitem">ผู้เชี่ยวชาญ</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Game Area -->
+    <main class="main-content" role="main">
+        <!-- Game Statistics & Timer Info Bar -->
+        <section class="game-info-bar" aria-label="แถบสถานะเกม">
+            <div class="info-item">
+                <span>ระดับ:</span>
+                <span id="current-difficulty-label" class="val">ง่าย</span>
+            </div>
+            <div class="info-item">
+                <span>ข้อผิดพลาด:</span>
+                <span id="mistakes-count" class="val">0/3</span>
+            </div>
+            <div class="info-item">
+                <span>คะแนน:</span>
+                <span id="score-display" class="val">0</span>
+            </div>
+            <div class="info-item">
+                <span id="timer-display" class="val" aria-label="เวลาที่ใช้ไป">00:00</span>
+                <button id="btn-pause" class="btn-pause" title="หยุด/เล่นต่อ (Pause/Resume)" aria-label="หยุดหรือเล่นเกมต่อ">
+                    <span class="icon" aria-hidden="true">⏸</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Smart Hint Notification Banner -->
+        <div id="hint-banner" class="hint-banner hidden" role="status" aria-live="polite">
+            <span id="hint-text"></span>
+        </div>
+
+        <!-- 9x9 Sudoku Board Container -->
+        <section class="board-wrapper" aria-label="ตารางปริศนาซูโดกุ 9 คูณ 9">
+            <div id="sudoku-board" class="sudoku-board" role="grid" aria-label="กระดานซูโดกุ 9 แถว 9 คอลัมน์ ใช้ปุ่มลูกศรเพื่อเลื่อนช่อง">
+                <!-- Cells rendered dynamically via app.js -->
+            </div>
+
+            <!-- Pause Overlay -->
+            <div id="pause-overlay" class="pause-overlay hidden" aria-hidden="true">
+                <svg class="pause-icon-big" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M8 5v14l11-7z"/>
+                </svg>
+                <div class="pause-text">เกมหยุดชั่วคราว - คลิกหรือกด Space เพื่อเล่นต่อ</div>
+            </div>
+        </section>
+
+        <!-- Action Controls Bar (Undo, Erase, Notes, Hint) -->
+        <section class="action-controls" aria-label="แถบเครื่องมือควบคุมการเล่น">
+            <button id="btn-undo" class="action-btn" title="เลิกทำ (Undo - กดปุ่ม U หรือ Ctrl+Z)" aria-label="เลิกทำการกระทำล่าสุด">
+                <svg class="btn-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 7v6h6"/>
+                    <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/>
+                </svg>
+                <span>เลิกทำ</span>
+            </button>
+
+            <button id="btn-erase" class="action-btn" title="ลบตัวเลขในช่อง (Erase - กดปุ่ม Backspace หรือ Delete)" aria-label="ลบตัวเลขหรือโน้ตในช่องที่เลือก">
+                <svg class="btn-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/>
+                    <path d="M22 21H7"/>
+                    <path d="m5 11 9 9"/>
+                </svg>
+                <span>ลบ</span>
+            </button>
+
+            <button id="btn-notes" class="action-btn" title="เปิด/ปิดโหมดจดบันทึก (Notes/Pencil - กดปุ่ม N หรือ P)" aria-pressed="false" aria-label="สลับโหมดจดบันทึกตัวเลขตัวเลือก">
+                <span class="badge-notes-mode">เปิด</span>
+                <svg class="btn-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                    <path d="m15 5 4 4"/>
+                </svg>
+                <span>บันทึก</span>
+            </button>
+
+            <button id="btn-hint" class="action-btn" title="ขอคำใบ้พร้อมคำอธิบาย (Smart Hint - กดปุ่ม H)" aria-label="ขอคำใบ้พร้อมคำอธิบายวิธีคิด">
+                <svg class="btn-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/>
+                    <path d="M9 18h6"/>
+                    <path d="M10 22h4"/>
+                </svg>
+                <span>คำใบ้</span>
+            </button>
+        </section>
+
+        <!-- Numpad (1 - 9) with remaining number counts -->
+        <section class="numpad-container" id="numpad" aria-label="แป้นพิมพ์ตัวเลข 1 ถึง 9">
+            <button class="numpad-btn" data-val="1" aria-label="ตัวเลข 1">
+                <span class="num-val">1</span>
+                <span class="num-remaining">9</span>
+            </button>
+            <button class="numpad-btn" data-val="2" aria-label="ตัวเลข 2">
+                <span class="num-val">2</span>
+                <span class="num-remaining">9</span>
+            </button>
+            <button class="numpad-btn" data-val="3" aria-label="ตัวเลข 3">
+                <span class="num-val">3</span>
+                <span class="num-remaining">9</span>
+            </button>
+            <button class="numpad-btn" data-val="4" aria-label="ตัวเลข 4">
+                <span class="num-val">4</span>
+                <span class="num-remaining">9</span>
+            </button>
+            <button class="numpad-btn" data-val="5" aria-label="ตัวเลข 5">
+                <span class="num-val">5</span>
+                <span class="num-remaining">9</span>
+            </button>
+            <button class="numpad-btn" data-val="6" aria-label="ตัวเลข 6">
+                <span class="num-val">6</span>
+                <span class="num-remaining">9</span>
+            </button>
+            <button class="numpad-btn" data-val="7" aria-label="ตัวเลข 7">
+                <span class="num-val">7</span>
+                <span class="num-remaining">9</span>
+            </button>
+            <button class="numpad-btn" data-val="8" aria-label="ตัวเลข 8">
+                <span class="num-val">8</span>
+                <span class="num-remaining">9</span>
+            </button>
+            <button class="numpad-btn" data-val="9" aria-label="ตัวเลข 9">
+                <span class="num-val">9</span>
+                <span class="num-remaining">9</span>
+            </button>
+        </section>
+    </main>
+
+    <!-- Modals -->
+
+    <!-- Game Over Modal -->
+    <div id="game-over-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="game-over-title">
+        <div class="modal-card">
+            <div class="modal-icon-big">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.5" stroke-linecap="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="15" y1="9" x2="9" y2="15"/>
+                    <line x1="9" y1="9" x2="15" y2="15"/>
+                </svg>
+            </div>
+            <h2 id="game-over-title" class="modal-title">จบเกม</h2>
+            <p class="modal-desc">คุณทำข้อผิดพลาดครบ 3 ครั้งในเกมนี้</p>
+            <div class="modal-actions">
+                <button class="btn-primary btn-restart-game" style="justify-content: center;">เริ่มใหม่</button>
+                <button class="btn-icon modal-close-btn" style="justify-content: center;">ดูหน้ากระดาน</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Victory Modal -->
+    <div id="win-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="win-title">
+        <div class="modal-card">
+            <div class="modal-icon-big">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#eab308" stroke-width="2.5" stroke-linecap="round">
+                    <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
+                    <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+                    <path d="M4 22h16"/>
+                    <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>
+                    <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/>
+                    <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
+                </svg>
+            </div>
+            <h2 id="win-title" class="modal-title">ยอดเยี่ยม! ยินดีด้วย</h2>
+            <p class="modal-desc">คุณแก้ปริศนาซูโดกุสำเร็จเรียบร้อยแล้ว!</p>
+            <div class="modal-stats">
+                <div class="modal-stat-item">
+                    <div class="stat-label">เวลาที่ใช้</div>
+                    <div id="win-time" class="stat-value">00:00</div>
+                </div>
+                <div class="modal-stat-item">
+                    <div class="stat-label">คะแนนรวม</div>
+                    <div id="win-score" class="stat-value">0</div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-primary btn-restart-game" style="justify-content: center;">เริ่มเกมใหม่</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Accessible Keyboard Shortcuts Help Modal -->
+    <div id="help-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="help-title">
+        <div class="modal-card">
+            <h2 id="help-title" class="modal-title">คู่มือปุ่มลัดแป้นพิมพ์</h2>
+            <p class="modal-desc">ออกแบบให้ผู้พิการทางสายตาสามารถเล่นได้อย่างสะดวกผ่านแป้นพิมพ์</p>
+            
+            <div class="keyboard-help-list">
+                <div class="help-row">
+                    <span>เลื่อนช่อง (ขึ้น / ลง / ซ้าย / ขวา)</span>
+                    <span class="help-key">ปุ่มลูกศร ↑ ↓ ← → หรือ W A S D</span>
+                </div>
+                <div class="help-row">
+                    <span>กรอกตัวเลขลงช่อง</span>
+                    <span class="help-key">แป้นเลข 1 ถึง 9</span>
+                </div>
+                <div class="help-row">
+                    <span>ลบตัวเลขหรือโน้ต</span>
+                    <span class="help-key">Backspace หรือ Delete</span>
+                </div>
+                <div class="help-row">
+                    <span>สลับโหมดจดบันทึก (Notes)</span>
+                    <span class="help-key">ปุ่ม N หรือ P</span>
+                </div>
+                <div class="help-row">
+                    <span>ฟังข้อมูลช่องปัจจุบันซ้ำ</span>
+                    <span class="help-key">Spacebar หรือ Enter</span>
+                </div>
+                <div class="help-row">
+                    <span>ฟังตัวเลขทั้งแถว (Row)</span>
+                    <span class="help-key">ปุ่ม R</span>
+                </div>
+                <div class="help-row">
+                    <span>ฟังตัวเลขทั้งคอลัมน์ (Column)</span>
+                    <span class="help-key">ปุ่ม C</span>
+                </div>
+                <div class="help-row">
+                    <span>ฟังตัวเลขทั้งบล็อก 3x3</span>
+                    <span class="help-key">ปุ่ม B</span>
+                </div>
+                <div class="help-row">
+                    <span>เลิกทำ (Undo)</span>
+                    <span class="help-key">ปุ่ม U หรือ Ctrl+Z</span>
+                </div>
+                <div class="help-row">
+                    <span>ขอคำใบ้ (Hint)</span>
+                    <span class="help-key">ปุ่ม H</span>
+                </div>
+                <div class="help-row">
+                    <span>เปิดคู่มือนี้</span>
+                    <span class="help-key">ปุ่ม ? หรือ F1</span>
+                </div>
+                <div class="help-row">
+                    <span>ปิดหน้าต่างช่วยเหลือ</span>
+                    <span class="help-key">ปุ่ม Escape</span>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn-primary modal-close-btn" style="justify-content: center;">เข้าใจแล้ว (ปิดคู่มือ)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/engine.js"></script>
+    <script src="js/audio.js"></script>
+    <script src="js/tts.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
