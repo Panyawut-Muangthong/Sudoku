@@ -97,6 +97,28 @@ class SudokuApp {
         this.tts.speak(welcomeText, true);
     }
 
+    // คำนวณข้อความบรรยายภาษาไทยสำหรับ Screen Reader (VoiceOver, TalkBack, NVDA)
+    getCellAriaLabel(r, c) {
+        const blockNum = Math.floor(r / 3) * 3 + Math.floor(c / 3) + 1;
+        const val = this.puzzle[r][c];
+        const isGiven = this.initialClues[r][c];
+        const notesArr = Array.from(this.notes[r][c]).sort((a, b) => a - b);
+        const isError = (val !== 0 && val !== this.solution[r][c]);
+
+        let desc = `แถว ${r + 1} คอลัมน์ ${c + 1} บล็อก ${blockNum}: `;
+        if (isError) {
+            desc += `ตัวเลข ${val} ไม่ถูกต้อง`;
+        } else if (val !== 0) {
+            desc += `ตัวเลข ${val} ${isGiven ? '(โจทย์)' : ''}`;
+        } else {
+            desc += `ว่าง`;
+            if (notesArr.length > 0) {
+                desc += `, โน้ต ${notesArr.join(' ')}`;
+            }
+        }
+        return desc;
+    }
+
     // เรนเดอร์ตาราง 9x9 พร้อมโครงสร้าง ARIA ที่สมบูรณ์
     renderBoard() {
         this.boardEl.innerHTML = '';
@@ -107,7 +129,8 @@ class SudokuApp {
             rowEl.setAttribute('role', 'row');
 
             for (let c = 0; c < 9; c++) {
-                const cellEl = document.createElement('div');
+                const cellEl = document.createElement('button');
+                cellEl.type = 'button';
                 cellEl.className = 'sudoku-cell';
                 cellEl.id = `cell-${r}-${c}`;
                 cellEl.setAttribute('role', 'gridcell');
@@ -116,8 +139,12 @@ class SudokuApp {
                 cellEl.setAttribute('aria-rowindex', r + 1);
                 cellEl.setAttribute('aria-colindex', c + 1);
 
-                // Roving tabindex สำหรับ Keyboard Navigation
-                cellEl.tabIndex = (r === this.selectedRow && c === this.selectedCol) ? 0 : -1;
+                // ทุกช่องต้องมี tabIndex = 0 เพื่อให้การ "ปัดหน้าจอ" (Swipe) ใน TalkBack / VoiceOver และ Tab บนคอมพิวเตอร์เข้าถึงได้ทุกช่อง!
+                cellEl.tabIndex = 0;
+
+                // กำหนด aria-label ชัดเจนตั้งแต่เริ่มต้น
+                cellEl.setAttribute('aria-label', this.getCellAriaLabel(r, c));
+                cellEl.setAttribute('aria-selected', (r === this.selectedRow && c === this.selectedCol) ? 'true' : 'false');
 
                 // เส้นแบ่งบล็อก 3x3
                 if ((c + 1) % 3 === 0 && c !== 8) cellEl.classList.add('border-right-thick');
@@ -134,12 +161,14 @@ class SudokuApp {
 
                 const valueSpan = document.createElement('span');
                 valueSpan.className = 'cell-value';
+                valueSpan.setAttribute('aria-hidden', 'true'); // ซ่อนจากโปรแกรมอ่านจอภาพ ให้อ่านจาก aria-label ที่สมบูรณ์เท่านั้น
                 valueSpan.textContent = val !== 0 ? val : '';
                 cellEl.appendChild(valueSpan);
 
                 // กริดโน้ต 3x3
                 const notesGrid = document.createElement('div');
                 notesGrid.className = 'cell-notes';
+                notesGrid.setAttribute('aria-hidden', 'true'); // ซ่อนตัวเลขย่อยไม่ให้รบกวน Screen Reader
                 for (let n = 1; n <= 9; n++) {
                     const noteSpan = document.createElement('span');
                     noteSpan.className = `note-item note-${n}`;
@@ -148,9 +177,16 @@ class SudokuApp {
                 }
                 cellEl.appendChild(notesGrid);
 
-                // Event click สำหรับเมาส์หรือการแตะหน้าจอ
+                // Event focus: ทำงานทันทีเมื่อผู้ใช้กด Tab หรือคนตาบอด "ปัดหน้าจอ" (Swipe ขวา/ซ้าย ใน TalkBack/VoiceOver)
+                cellEl.addEventListener('focus', () => {
+                    if (this.selectedRow !== r || this.selectedCol !== c) {
+                        this.selectCell(r, c, true, false);
+                    }
+                });
+
+                // Event click: สำหรับการแตะหน้าจอ หรือ Double Tap ใน TalkBack / VoiceOver
                 cellEl.addEventListener('click', () => {
-                    this.selectCell(r, c, true);
+                    this.selectCell(r, c, true, true);
                 });
 
                 rowEl.appendChild(cellEl);
@@ -162,12 +198,8 @@ class SudokuApp {
     }
 
     // เลือกช่อง (Focus & Select)
-    selectCell(row, col, isUserAction = true) {
+    selectCell(row, col, isUserAction = true, shouldFocusDom = true) {
         if (this.isPaused || this.isGameOver || this.isGameWon) return;
-
-        // บันทึกช่องเดิม
-        const prevCell = document.getElementById(`cell-${this.selectedRow}-${this.selectedCol}`);
-        if (prevCell) prevCell.tabIndex = -1;
 
         // ตรวจสอบการข้ามบล็อก
         const prevBlock = Math.floor(this.selectedRow / 3) * 3 + Math.floor(this.selectedCol / 3);
@@ -176,13 +208,20 @@ class SudokuApp {
             this.audio.playBlockCross();
         }
 
+        const prevCell = document.getElementById(`cell-${this.selectedRow}-${this.selectedCol}`);
+        if (prevCell) {
+            prevCell.setAttribute('aria-selected', 'false');
+        }
+
         this.selectedRow = row;
         this.selectedCol = col;
 
         const currentCell = document.getElementById(`cell-${row}-${col}`);
         if (currentCell) {
-            currentCell.tabIndex = 0;
-            currentCell.focus();
+            currentCell.setAttribute('aria-selected', 'true');
+            if (shouldFocusDom && document.activeElement !== currentCell) {
+                currentCell.focus();
+            }
         }
 
         this.updateCellHighlights();
@@ -197,18 +236,13 @@ class SudokuApp {
             this.audio.playNavigate(row, col, val === 0, isGiven);
         }
 
-        // เสียงบรรยายข้อมูลช่อง
+        // เสียงบรรยายข้อมูลช่อง (TTS ในตัว)
         this.tts.announceCell(row, col, val, isGiven, notesArr, isError);
 
-        // อัปเดต aria-label สำหรับโปรแกรมอ่านจอภาพ
-        const blockNum = Math.floor(row / 3) * 3 + Math.floor(col / 3) + 1;
-        let ariaDesc = `แถว ${row + 1} คอลัมน์ ${col + 1} บล็อก ${blockNum}: `;
-        if (val !== 0) {
-            ariaDesc += `เลข ${val} ${isGiven ? '(โจทย์)' : ''}`;
-        } else {
-            ariaDesc += `ว่าง ${notesArr.length > 0 ? 'โน้ต ' + notesArr.join(', ') : ''}`;
+        // อัปเดต aria-label ให้เป็นข้อมูลล่าสุดเสมอ
+        if (currentCell) {
+            currentCell.setAttribute('aria-label', this.getCellAriaLabel(row, col));
         }
-        if (currentCell) currentCell.setAttribute('aria-label', ariaDesc);
     }
 
     // ไฮไลต์แถว คอลัมน์ บล็อก และตัวเลขที่เหมือนกัน (แบบ Sudoku.com)
@@ -555,6 +589,9 @@ class SudokuApp {
             const num = idx + 1;
             item.textContent = (val === 0 && this.notes[r][c].has(num)) ? num : '';
         });
+
+        // อัปเดต aria-label เสมอเมื่อมีการเปลี่ยนแปลงค่า
+        cell.setAttribute('aria-label', this.getCellAriaLabel(r, c));
     }
 
     // อัปเดตจำนวนตัวเลขที่เหลือในปุ่ม Numpad (แบบ Sudoku.com)
@@ -571,9 +608,11 @@ class SudokuApp {
             if (count === 0) {
                 btn.classList.add('completed');
                 btn.setAttribute('aria-disabled', 'true');
+                btn.setAttribute('aria-label', `ตัวเลข ${num} ใส่ครบแล้ว`);
             } else {
                 btn.classList.remove('completed');
                 btn.removeAttribute('aria-disabled');
+                btn.setAttribute('aria-label', `ใส่ตัวเลข ${num}, เหลืออีก ${count} ช่อง`);
             }
         }
     }
