@@ -77,25 +77,22 @@ class SudokuTTS {
         }
     }
 
-    // บรรยายข้อมูลของช่องที่ผู้เล่นโฟกัสอยู่
-    announceCell(row, col, value, isGiven, notes = [], isError = false) {
-        const block = Math.floor(row / 3) * 3 + Math.floor(col / 3) + 1;
-        let desc = `แถว ${row + 1} คอลัมน์ ${col + 1}, บล็อก ${block}. `;
+    // บรรยายข้อมูลของช่องที่ผู้เล่นโฟกัสอยู่ ตามรูปแบบ: แถว... คอลัมน์... ล็อค... ค่า... แก้ไขได้/แก้ไขไม่ได้
+    announceCell(row, col, value, isGiven, notes = [], isError = false, blockNum = 1) {
+        let desc = `แถว ${row + 1} คอลัมน์ ${col + 1} ล็อค ${blockNum} `;
 
         if (isError) {
-            desc += `ตัวเลข ${value}, มีข้อผิดพลาด. `;
+            desc += `ค่า ${value} ผิด `;
         } else if (value !== 0) {
-            if (isGiven) {
-                desc += `ตัวเลข ${value}, เป็นโจทย์ ไม่สามารถแก้ไขได้. `;
-            } else {
-                desc += `ตัวเลข ${value}, ที่คุณกรอก. `;
-            }
+            desc += `ค่า ${value} `;
         } else {
-            desc += `ว่าง. `;
+            desc += `ค่า ว่าง `;
             if (notes && notes.length > 0) {
-                desc += `โน้ตตัวเลข: ${notes.join(', ')}. `;
+                desc += `โน้ต ${notes.join(' ')} `;
             }
         }
+
+        desc += isGiven ? `แก้ไขไม่ได้` : `แก้ไขได้`;
 
         this.speak(desc, false);
     }

@@ -153,6 +153,7 @@ class SudokuApp {
     }
 
     // คำนวณข้อความบรรยายภาษาไทยสำหรับ Screen Reader (VoiceOver, TalkBack, NVDA)
+    // รูปแบบตามคำขอ: แถว... คอลัมน์... ล็อค... ค่า... แก้ไขได้/แก้ไขไม่ได้
     getCellAriaLabel(r, c) {
         const numBlocksPerRow = this.size / this.boxSize;
         const blockNum = Math.floor(r / this.boxSize) * numBlocksPerRow + Math.floor(c / this.boxSize) + 1;
@@ -161,17 +162,20 @@ class SudokuApp {
         const notesArr = Array.from(this.notes[r][c]).sort((a, b) => a - b);
         const isError = (val !== 0 && val !== this.solution[r][c]);
 
-        let desc = `แถว ${r + 1} คอลัมน์ ${c + 1} บล็อก ${blockNum}: `;
+        let desc = `แถว ${r + 1} คอลัมน์ ${c + 1} ล็อค ${blockNum} `;
+
         if (isError) {
-            desc += `ตัวเลข ${val} ไม่ถูกต้อง`;
+            desc += `ค่า ${val} ผิด `;
         } else if (val !== 0) {
-            desc += `ตัวเลข ${val} ${isGiven ? '(โจทย์)' : ''}`;
+            desc += `ค่า ${val} `;
         } else {
-            desc += `ว่าง`;
+            desc += `ค่า ว่าง `;
             if (notesArr.length > 0) {
-                desc += `, โน้ต ${notesArr.join(' ')}`;
+                desc += `โน้ต ${notesArr.join(' ')} `;
             }
         }
+
+        desc += isGiven ? `แก้ไขไม่ได้` : `แก้ไขได้`;
         return desc;
     }
 
@@ -328,8 +332,10 @@ class SudokuApp {
             this.audio.playNavigate(row, col, val === 0, isGiven);
         }
 
+        const blockNum = newBlock + 1;
+
         // เสียงบรรยายข้อมูลช่อง (TTS ในตัว)
-        this.tts.announceCell(row, col, val, isGiven, notesArr, isError);
+        this.tts.announceCell(row, col, val, isGiven, notesArr, isError, blockNum);
 
         // อัปเดต aria-label ให้เป็นข้อมูลล่าสุดเสมอ
         if (currentCell) {
@@ -1009,7 +1015,9 @@ class SudokuApp {
                     const isGiven = this.initialClues[r][c];
                     const notesArr = Array.from(this.notes[r][c]).sort((a, b) => a - b);
                     const isError = val !== 0 && val !== this.solution[r][c];
-                    this.tts.announceCell(r, c, val, isGiven, notesArr, isError);
+                    const numBlocksPerRow = this.size / this.boxSize;
+                    const blockNum = Math.floor(r / this.boxSize) * numBlocksPerRow + Math.floor(c / this.boxSize) + 1;
+                    this.tts.announceCell(r, c, val, isGiven, notesArr, isError, blockNum);
                 }
                 e.preventDefault();
                 return;
