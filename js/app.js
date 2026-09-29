@@ -221,7 +221,13 @@ class SudokuApp {
                     cellEl.classList.add('cell-given');
                     cellEl.value = val;
                 } else {
-                    cellEl.value = (val !== 0) ? val : '';
+                    const notesArr = Array.from(this.notes[r][c]).sort((a, b) => a - b);
+                    if (val !== 0) {
+                        cellEl.value = val;
+                    } else {
+                        cellEl.value = '';
+                        if (notesArr.length > 0) cellEl.placeholder = notesArr.join(' ');
+                    }
                 }
 
                 cellEl.setAttribute('aria-label', this.getCellAriaLabel(r, c));
@@ -726,7 +732,20 @@ class SudokuApp {
         if (!cell) return;
 
         const val = this.puzzle[r][c];
-        cell.value = (val !== 0) ? val : '';
+        const isGiven = this.initialClues[r][c];
+        if (isGiven) {
+            cell.value = val;
+            cell.placeholder = '';
+        } else {
+            const notesArr = Array.from(this.notes[r][c]).sort((a, b) => a - b);
+            if (val !== 0) {
+                cell.value = val;
+                cell.placeholder = '';
+            } else {
+                cell.value = '';
+                cell.placeholder = (notesArr.length > 0) ? notesArr.join(' ') : '';
+            }
+        }
         cell.setAttribute('aria-label', this.getCellAriaLabel(r, c));
     }
 
