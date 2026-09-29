@@ -1,6 +1,9 @@
 /**
  * Main Application Controller for Accessible Sudoku
- * Thai localized & Screen-Reader / Blind Accessible
+ * Supports 2 Modes:
+ * 1. Mode 4x4 (2x2 blocks, 4 blocks total, digits 1-4)
+ * 2. Mode 9x9 (3x3 blocks, 9 blocks total, digits 1-9)
+ * Full Accessibility for Blind and Visually Impaired (TalkBack / VoiceOver / NVDA)
  */
 
 class SudokuApp {
@@ -9,13 +12,17 @@ class SudokuApp {
         this.audio = new SudokuAudio();
         this.tts = new SudokuTTS();
 
-        // Game State
+        // Game Configuration & State
+        this.gameMode = '4x4'; // เริ่มต้นที่โหมด 4x4 ตามคำขอของผู้ใช้ (เล่นง่าย & ทดสอบการปัดหน้าจอ)
+        this.size = 4;
+        this.boxSize = 2;
         this.difficulty = 'easy';
+
         this.puzzle = null;
         this.solution = null;
         this.initialClues = null;
-        this.notes = Array.from({ length: 9 }, () => Array.from({ length: 9 }, () => new Set()));
-        
+        this.notes = [];
+
         this.selectedRow = 0;
         this.selectedCol = 0;
         this.isNotesMode = false;
@@ -37,11 +44,12 @@ class SudokuApp {
         this.initDOM();
         this.bindEvents();
         this.applySettingsUI();
-        this.newGame(this.difficulty);
+        this.newGame(this.gameMode, this.difficulty);
     }
 
     // แคช DOM Elements
     initDOM() {
+        this.boardWrapper = document.querySelector('.board-wrapper');
         this.boardEl = document.getElementById('sudoku-board');
         this.timerEl = document.getElementById('timer-display');
         this.mistakesEl = document.getElementById('mistakes-count');
@@ -58,11 +66,19 @@ class SudokuApp {
         this.gameOverModal = document.getElementById('game-over-modal');
         this.winModal = document.getElementById('win-modal');
         this.helpModal = document.getElementById('help-modal');
+
+        // Mode switch tabs
+        this.tabMode4x4 = document.getElementById('tab-mode-4x4');
+        this.tabMode9x9 = document.getElementById('tab-mode-9x9');
     }
 
-    // เริ่มเกมใหม่
-    newGame(difficulty = 'easy') {
+    // เริ่มเกมใหม่ตามโหมด ('4x4' หรือ '9x9') และระดับความยาก
+    newGame(mode = this.gameMode, difficulty = this.difficulty) {
+        this.gameMode = mode;
         this.difficulty = difficulty;
+        this.size = (mode === '4x4') ? 4 : 9;
+        this.boxSize = (mode === '4x4') ? 2 : 3;
+
         this.isGameOver = false;
         this.isGameWon = false;
         this.mistakes = 0;
@@ -70,9 +86,9 @@ class SudokuApp {
         this.timerSeconds = 0;
         this.isPaused = false;
         this.undoStack = [];
-        this.notes = Array.from({ length: 9 }, () => Array.from({ length: 9 }, () => new Set()));
+        this.notes = Array.from({ length: this.size }, () => Array.from({ length: this.size }, () => new Set()));
 
-        const gameData = this.engine.generateGame(difficulty);
+        const gameData = this.engine.generateGame(this.gameMode, this.difficulty);
         this.puzzle = gameData.puzzle;
         this.solution = gameData.solution;
         this.initialClues = gameData.initialClues;
@@ -80,26 +96,66 @@ class SudokuApp {
         this.selectedRow = 0;
         this.selectedCol = 0;
 
+        this.updateModeUI();
         this.closeModals();
         this.renderBoard();
+        this.renderNumpad();
         this.updateStatsUI();
         this.updateNumpadBadges();
         this.startTimer();
 
         // แจ้งเตือนเสียงและข้อความเริ่มต้น
+        const welcomeText = (this.gameMode === '4x4')
+            ? 'เริ่มเกมใหม่ โหมดตาราง 4 คูณ 4 ประกอบด้วย 4 บล็อก บล็อกละ 2 คูณ 2 ใช้ตัวเลข 1 ถึง 4 พร้อมแล้ว'
+            : 'เริ่มเกมใหม่ โหมดตาราง 9 คูณ 9 ประกอบด้วย 9 บล็อก บล็อกละ 3 คูณ 3 ใช้ตัวเลข 1 ถึง 9 พร้อมแล้ว';
+        this.tts.speak(welcomeText, true);
+    }
+
+    // อัปเดต UI คลาสและแท็บตามโหมดที่เลือก
+    updateModeUI() {
+        const is4x4 = (this.gameMode === '4x4');
+
+        if (this.tabMode4x4) {
+            this.tabMode4x4.classList.toggle('active', is4x4);
+            this.tabMode4x4.setAttribute('aria-selected', is4x4 ? 'true' : 'false');
+        }
+        if (this.tabMode9x9) {
+            this.tabMode9x9.classList.toggle('active', !is4x4);
+            this.tabMode9x9.setAttribute('aria-selected', !is4x4 ? 'true' : 'false');
+        }
+
+        const elementsToToggle = [
+            this.boardWrapper,
+            this.boardEl,
+            this.numpadEl,
+            document.querySelector('.mode-switcher-bar'),
+            document.querySelector('.game-info-bar'),
+            document.querySelector('.action-controls'),
+            this.hintBanner
+        ];
+
+        elementsToToggle.forEach(el => {
+            if (el) {
+                el.classList.toggle('mode-4x4', is4x4);
+                el.classList.toggle('mode-9x9', !is4x4);
+            }
+        });
+
+        // อัปเดตชื่อระดับความยาก
         const diffNames = {
             easy: 'ง่าย',
             medium: 'ปานกลาง',
             hard: 'ยาก',
             expert: 'ผู้เชี่ยวชาญ'
         };
-        const welcomeText = `เริ่มเกมใหม่ ระดับ${diffNames[difficulty]} กระดาน 9 คูณ 9 พร้อมแล้ว กดปุ่มลูกศรเพื่อเลื่อนช่อง หรือกดเครื่องหมายคำถาม เพื่อฟังวิธีใช้แป้นพิมพ์`;
-        this.tts.speak(welcomeText, true);
+        const modeLabel = is4x4 ? '4×4 (บล็อก 2×2)' : `9×9 (${diffNames[this.difficulty]})`;
+        if (this.diffLabelEl) this.diffLabelEl.textContent = modeLabel;
     }
 
     // คำนวณข้อความบรรยายภาษาไทยสำหรับ Screen Reader (VoiceOver, TalkBack, NVDA)
     getCellAriaLabel(r, c) {
-        const blockNum = Math.floor(r / 3) * 3 + Math.floor(c / 3) + 1;
+        const numBlocksPerRow = this.size / this.boxSize;
+        const blockNum = Math.floor(r / this.boxSize) * numBlocksPerRow + Math.floor(c / this.boxSize) + 1;
         const val = this.puzzle[r][c];
         const isGiven = this.initialClues[r][c];
         const notesArr = Array.from(this.notes[r][c]).sort((a, b) => a - b);
@@ -119,16 +175,20 @@ class SudokuApp {
         return desc;
     }
 
-    // เรนเดอร์ตาราง 9x9 พร้อมโครงสร้าง ARIA ที่สมบูรณ์
+    // เรนเดอร์ตารางกระดานตามขนาด (4x4 หรือ 9x9)
     renderBoard() {
         this.boardEl.innerHTML = '';
+        const ariaBoardDesc = (this.size === 4)
+            ? 'กระดานซูโดกุ 4 แถว 4 คอลัมน์ ประกอบด้วย 4 บล็อก บล็อกละ 2 คูณ 2 ใช้ปุ่มลูกศรหรือปัดหน้าจอเพื่อเลื่อนช่อง'
+            : 'กระดานซูโดกุ 9 แถว 9 คอลัมน์ ประกอบด้วย 9 บล็อก บล็อกละ 3 คูณ 3 ใช้ปุ่มลูกศรหรือปัดหน้าจอเพื่อเลื่อนช่อง';
+        this.boardEl.setAttribute('aria-label', ariaBoardDesc);
 
-        for (let r = 0; r < 9; r++) {
+        for (let r = 0; r < this.size; r++) {
             const rowEl = document.createElement('div');
             rowEl.className = 'sudoku-row';
             rowEl.setAttribute('role', 'row');
 
-            for (let c = 0; c < 9; c++) {
+            for (let c = 0; c < this.size; c++) {
                 const cellEl = document.createElement('button');
                 cellEl.type = 'button';
                 cellEl.className = 'sudoku-cell';
@@ -139,18 +199,20 @@ class SudokuApp {
                 cellEl.setAttribute('aria-rowindex', r + 1);
                 cellEl.setAttribute('aria-colindex', c + 1);
 
-                // ทุกช่องต้องมี tabIndex = 0 เพื่อให้การ "ปัดหน้าจอ" (Swipe) ใน TalkBack / VoiceOver และ Tab บนคอมพิวเตอร์เข้าถึงได้ทุกช่อง!
+                // ทุกช่องต้องมี tabIndex = 0 เพื่อให้การปัดหน้าจอ (Swipe) ใน TalkBack / VoiceOver เข้าถึงได้ทุกช่อง!
                 cellEl.tabIndex = 0;
 
-                // กำหนด aria-label ชัดเจนตั้งแต่เริ่มต้น
                 cellEl.setAttribute('aria-label', this.getCellAriaLabel(r, c));
                 cellEl.setAttribute('aria-selected', (r === this.selectedRow && c === this.selectedCol) ? 'true' : 'false');
 
-                // เส้นแบ่งบล็อก 3x3
-                if ((c + 1) % 3 === 0 && c !== 8) cellEl.classList.add('border-right-thick');
-                if ((r + 1) % 3 === 0 && r !== 8) cellEl.classList.add('border-bottom-thick');
+                // เส้นแบ่งบล็อกหนา
+                if ((c + 1) % this.boxSize === 0 && c !== this.size - 1) {
+                    cellEl.classList.add('border-right-thick');
+                }
+                if ((r + 1) % this.boxSize === 0 && r !== this.size - 1) {
+                    cellEl.classList.add('border-bottom-thick');
+                }
 
-                // คอนเทนต์ภายในช่อง: ตัวเลขหลัก หรือ ตารางโน้ตย่อย
                 const val = this.puzzle[r][c];
                 const isGiven = this.initialClues[r][c];
 
@@ -161,15 +223,15 @@ class SudokuApp {
 
                 const valueSpan = document.createElement('span');
                 valueSpan.className = 'cell-value';
-                valueSpan.setAttribute('aria-hidden', 'true'); // ซ่อนจากโปรแกรมอ่านจอภาพ ให้อ่านจาก aria-label ที่สมบูรณ์เท่านั้น
+                valueSpan.setAttribute('aria-hidden', 'true');
                 valueSpan.textContent = val !== 0 ? val : '';
                 cellEl.appendChild(valueSpan);
 
-                // กริดโน้ต 3x3
+                // กริดโน้ต
                 const notesGrid = document.createElement('div');
                 notesGrid.className = 'cell-notes';
-                notesGrid.setAttribute('aria-hidden', 'true'); // ซ่อนตัวเลขย่อยไม่ให้รบกวน Screen Reader
-                for (let n = 1; n <= 9; n++) {
+                notesGrid.setAttribute('aria-hidden', 'true');
+                for (let n = 1; n <= this.size; n++) {
                     const noteSpan = document.createElement('span');
                     noteSpan.className = `note-item note-${n}`;
                     noteSpan.textContent = this.notes[r][c].has(n) ? n : '';
@@ -177,7 +239,7 @@ class SudokuApp {
                 }
                 cellEl.appendChild(notesGrid);
 
-                // Event focus: ทำงานทันทีเมื่อผู้ใช้กด Tab หรือคนตาบอด "ปัดหน้าจอ" (Swipe ขวา/ซ้าย ใน TalkBack/VoiceOver)
+                // Event focus: ทำงานทันทีเมื่อผู้ใช้กด Tab หรือคนตาบอด "ปัดหน้าจอ" (Swipe) ผ่าน TalkBack / VoiceOver!
                 cellEl.addEventListener('focus', () => {
                     if (this.selectedRow !== r || this.selectedCol !== c) {
                         this.selectCell(r, c, true, false);
@@ -197,13 +259,43 @@ class SudokuApp {
         this.updateCellHighlights();
     }
 
+    // เรนเดอร์ปุ่ม Numpad ตามขนาด (4 ปุ่มสำหรับ 4x4, 9 ปุ่มสำหรับ 9x9)
+    renderNumpad() {
+        this.numpadEl.innerHTML = '';
+        const ariaNumpadLabel = (this.size === 4)
+            ? 'แป้นพิมพ์ตัวเลข 1 ถึง 4'
+            : 'แป้นพิมพ์ตัวเลข 1 ถึง 9';
+        this.numpadEl.setAttribute('aria-label', ariaNumpadLabel);
+
+        for (let num = 1; num <= this.size; num++) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'numpad-btn';
+            btn.dataset.val = num;
+            btn.setAttribute('aria-label', `ตัวเลข ${num}`);
+
+            const valSpan = document.createElement('span');
+            valSpan.className = 'num-val';
+            valSpan.textContent = num;
+            btn.appendChild(valSpan);
+
+            const remSpan = document.createElement('span');
+            remSpan.className = 'num-remaining';
+            remSpan.textContent = this.size;
+            btn.appendChild(remSpan);
+
+            this.numpadEl.appendChild(btn);
+        }
+    }
+
     // เลือกช่อง (Focus & Select)
     selectCell(row, col, isUserAction = true, shouldFocusDom = true) {
         if (this.isPaused || this.isGameOver || this.isGameWon) return;
 
         // ตรวจสอบการข้ามบล็อก
-        const prevBlock = Math.floor(this.selectedRow / 3) * 3 + Math.floor(this.selectedCol / 3);
-        const newBlock = Math.floor(row / 3) * 3 + Math.floor(col / 3);
+        const numBlocksPerRow = this.size / this.boxSize;
+        const prevBlock = Math.floor(this.selectedRow / this.boxSize) * numBlocksPerRow + Math.floor(this.selectedCol / this.boxSize);
+        const newBlock = Math.floor(row / this.boxSize) * numBlocksPerRow + Math.floor(col / this.boxSize);
         if (prevBlock !== newBlock && isUserAction) {
             this.audio.playBlockCross();
         }
@@ -245,14 +337,14 @@ class SudokuApp {
         }
     }
 
-    // ไฮไลต์แถว คอลัมน์ บล็อก และตัวเลขที่เหมือนกัน (แบบ Sudoku.com)
+    // ไฮไลต์แถว คอลัมน์ บล็อก และตัวเลขที่เหมือนกัน
     updateCellHighlights() {
         const selectedVal = this.puzzle[this.selectedRow][this.selectedCol];
-        const selBlockRow = Math.floor(this.selectedRow / 3);
-        const selBlockCol = Math.floor(this.selectedCol / 3);
+        const selBlockRow = Math.floor(this.selectedRow / this.boxSize);
+        const selBlockCol = Math.floor(this.selectedCol / this.boxSize);
 
-        for (let r = 0; r < 9; r++) {
-            for (let c = 0; c < 9; c++) {
+        for (let r = 0; r < this.size; r++) {
+            for (let c = 0; c < this.size; c++) {
                 const cell = document.getElementById(`cell-${r}-${c}`);
                 if (!cell) continue;
 
@@ -265,7 +357,7 @@ class SudokuApp {
                 } else if (
                     r === this.selectedRow ||
                     c === this.selectedCol ||
-                    (Math.floor(r / 3) === selBlockRow && Math.floor(c / 3) === selBlockCol)
+                    (Math.floor(r / this.boxSize) === selBlockRow && Math.floor(c / this.boxSize) === selBlockCol)
                 ) {
                     cell.classList.add('highlighted');
                 }
@@ -274,7 +366,6 @@ class SudokuApp {
                     cell.classList.add('same-number');
                 }
 
-                // ไฮไลต์ข้อผิดพลาด
                 if (val !== 0 && val !== this.solution[r][c]) {
                     cell.classList.add('cell-error');
                 }
@@ -285,6 +376,7 @@ class SudokuApp {
     // กรอกตัวเลขลงในช่องที่เลือก
     inputNumber(num) {
         if (this.isPaused || this.isGameOver || this.isGameWon) return;
+        if (num < 1 || num > this.size) return;
 
         const r = this.selectedRow;
         const c = this.selectedCol;
@@ -298,7 +390,6 @@ class SudokuApp {
 
         // โหมดจดบันทึก (Pencil Notes)
         if (this.isNotesMode) {
-            // ถ้าช่องนั้นมีตัวเลขหลักอยู่แล้ว ไม่สามารถจดโน้ตได้
             if (this.puzzle[r][c] !== 0) {
                 this.tts.speak(`ช่องนี้มีตัวเลข ${this.puzzle[r][c]} อยู่แล้ว โปรดลบก่อนจดบันทึก`, false);
                 return;
@@ -332,7 +423,7 @@ class SudokuApp {
 
         // โหมดกรอกตัวเลขปกติ
         const currentVal = this.puzzle[r][c];
-        if (currentVal === num) return; // ถ้าเป็นเลขเดิมอยู่แล้ว ไม่ทำซ้ำ
+        if (currentVal === num) return;
 
         const prevVal = currentVal;
         const prevNotes = new Set(this.notes[r][c]);
@@ -340,9 +431,8 @@ class SudokuApp {
 
         if (isCorrect) {
             this.puzzle[r][c] = num;
-            this.notes[r][c].clear(); // เคลียร์โน้ตในช่องนี้
+            this.notes[r][c].clear();
 
-            // ลบโน้ตเลขนี้ออกจากแถว, คอลัมน์, และบล็อกเดียวกันโดยอัตโนมัติ
             this.autoRemoveNotes(r, c, num);
 
             this.score += 100;
@@ -362,7 +452,6 @@ class SudokuApp {
             this.updateNumpadBadges();
             this.updateStatsUI();
 
-            // ตรวจสอบว่าเต็ม 1 ยูนิต (แถว/คอลัมน์/บล็อก) หรือยัง
             const completedUnits = this.checkCompletedUnits(r, c);
             if (completedUnits.length > 0) {
                 this.audio.playCompletedUnit();
@@ -372,12 +461,10 @@ class SudokuApp {
                 this.tts.speak(`ใส่เลข ${num} ถูกต้อง!`, false);
             }
 
-            // ตรวจสอบว่าชนะเกมหรือยัง
-            if (this.engine.isGameWon(this.puzzle, this.solution)) {
+            if (this.engine.isGameWon(this.puzzle, this.solution, this.size)) {
                 this.handleGameWon();
             }
         } else {
-            // ใส่ผิดพลาด
             this.mistakes++;
             this.puzzle[r][c] = num;
             this.audio.playMistake();
@@ -406,22 +493,22 @@ class SudokuApp {
 
     // ลบโน้ตเลขที่ใส่แล้วออกจากแถว คอลัมน์ และบล็อก
     autoRemoveNotes(row, col, num) {
-        for (let c = 0; c < 9; c++) {
+        for (let c = 0; c < this.size; c++) {
             if (this.notes[row][c].has(num)) {
                 this.notes[row][c].delete(num);
                 this.updateCellDOM(row, c);
             }
         }
-        for (let r = 0; r < 9; r++) {
+        for (let r = 0; r < this.size; r++) {
             if (this.notes[r][col].has(num)) {
                 this.notes[r][col].delete(num);
                 this.updateCellDOM(r, col);
             }
         }
-        const startRow = Math.floor(row / 3) * 3;
-        const startCol = Math.floor(col / 3) * 3;
-        for (let r = 0; r < 3; r++) {
-            for (let c = 0; c < 3; c++) {
+        const startRow = Math.floor(row / this.boxSize) * this.boxSize;
+        const startCol = Math.floor(col / this.boxSize) * this.boxSize;
+        for (let r = 0; r < this.boxSize; r++) {
+            for (let c = 0; c < this.boxSize; c++) {
                 if (this.notes[startRow + r][startCol + c].has(num)) {
                     this.notes[startRow + r][startCol + c].delete(num);
                     this.updateCellDOM(startRow + r, startCol + c);
@@ -440,7 +527,7 @@ class SudokuApp {
 
         // เช็คคอลัมน์
         let colComplete = true;
-        for (let r = 0; r < 9; r++) {
+        for (let r = 0; r < this.size; r++) {
             if (this.puzzle[r][col] !== this.solution[r][col]) {
                 colComplete = false;
                 break;
@@ -449,11 +536,11 @@ class SudokuApp {
         if (colComplete) completed.push(`คอลัมน์ที่ ${col + 1}`);
 
         // เช็คบล็อก
-        const startRow = Math.floor(row / 3) * 3;
-        const startCol = Math.floor(col / 3) * 3;
+        const startRow = Math.floor(row / this.boxSize) * this.boxSize;
+        const startCol = Math.floor(col / this.boxSize) * this.boxSize;
         let blockComplete = true;
-        for (let r = 0; r < 3; r++) {
-            for (let c = 0; c < 3; c++) {
+        for (let r = 0; r < this.boxSize; r++) {
+            for (let c = 0; c < this.boxSize; c++) {
                 if (this.puzzle[startRow + r][startCol + c] !== this.solution[startRow + r][startCol + c]) {
                     blockComplete = false;
                     break;
@@ -461,7 +548,8 @@ class SudokuApp {
             }
         }
         if (blockComplete) {
-            const blockNum = Math.floor(row / 3) * 3 + Math.floor(col / 3) + 1;
+            const numBlocksPerRow = this.size / this.boxSize;
+            const blockNum = Math.floor(row / this.boxSize) * numBlocksPerRow + Math.floor(col / this.boxSize) + 1;
             completed.push(`บล็อกที่ ${blockNum}`);
         }
 
@@ -548,16 +636,14 @@ class SudokuApp {
     giveHint() {
         if (this.isPaused || this.isGameOver || this.isGameWon) return;
 
-        const hint = this.engine.getSmartHint(this.puzzle, this.solution, this.selectedRow, this.selectedCol);
+        const hint = this.engine.getSmartHint(this.puzzle, this.solution, this.selectedRow, this.selectedCol, this.size, this.boxSize);
         if (!hint) return;
 
         this.selectCell(hint.row, hint.col, false);
 
-        // แสดงแบนเนอร์คำใบ้
         this.hintBanner.classList.remove('hidden');
         this.hintText.innerHTML = `<strong>${hint.title}:</strong> ${hint.displayText}`;
 
-        // ใส่ตัวเลขคำตอบลงในช่องให้ทันที
         this.puzzle[hint.row][hint.col] = hint.number;
         this.notes[hint.row][hint.col].clear();
         this.autoRemoveNotes(hint.row, hint.col, hint.number);
@@ -569,7 +655,7 @@ class SudokuApp {
         this.audio.playHint();
         this.tts.speak(hint.speechText, true);
 
-        if (this.engine.isGameWon(this.puzzle, this.solution)) {
+        if (this.engine.isGameWon(this.puzzle, this.solution, this.size)) {
             setTimeout(() => this.handleGameWon(), 1000);
         }
     }
@@ -583,21 +669,19 @@ class SudokuApp {
         const valSpan = cell.querySelector('.cell-value');
         if (valSpan) valSpan.textContent = val !== 0 ? val : '';
 
-        // อัปเดตโน้ต
         const noteItems = cell.querySelectorAll('.note-item');
         noteItems.forEach((item, idx) => {
             const num = idx + 1;
             item.textContent = (val === 0 && this.notes[r][c].has(num)) ? num : '';
         });
 
-        // อัปเดต aria-label เสมอเมื่อมีการเปลี่ยนแปลงค่า
         cell.setAttribute('aria-label', this.getCellAriaLabel(r, c));
     }
 
-    // อัปเดตจำนวนตัวเลขที่เหลือในปุ่ม Numpad (แบบ Sudoku.com)
+    // อัปเดตจำนวนตัวเลขที่เหลือในปุ่ม Numpad
     updateNumpadBadges() {
-        const remaining = this.engine.getRemainingCounts(this.puzzle);
-        for (let num = 1; num <= 9; num++) {
+        const remaining = this.engine.getRemainingCounts(this.puzzle, this.size);
+        for (let num = 1; num <= this.size; num++) {
             const btn = document.querySelector(`.numpad-btn[data-val="${num}"]`);
             if (!btn) continue;
 
@@ -652,14 +736,6 @@ class SudokuApp {
     updateStatsUI() {
         this.mistakesEl.textContent = `${this.mistakes}/${this.maxMistakes}`;
         this.scoreEl.textContent = this.score;
-
-        const diffNames = {
-            easy: 'ง่าย',
-            medium: 'ปานกลาง',
-            hard: 'ยาก',
-            expert: 'ผู้เชี่ยวชาญ'
-        };
-        this.diffLabelEl.textContent = diffNames[this.difficulty];
     }
 
     // จบเกม (Game Over)
@@ -698,7 +774,7 @@ class SudokuApp {
         this.hintBanner.classList.add('hidden');
     }
 
-    // สลับธีมคอนทราสต์สูง (High Contrast Dark Mode)
+    // สลับธีมคอนทราสต์สูง
     toggleHighContrast() {
         this.highContrast = !this.highContrast;
         document.body.classList.toggle('high-contrast', this.highContrast);
@@ -745,8 +821,19 @@ class SudokuApp {
 
     // ผูก Event Listeners ต่างๆ
     bindEvents() {
-        // แป้นพิมพ์ Keyboard Navigation & Shortcuts
         window.addEventListener('keydown', (e) => this.handleKeyDown(e));
+
+        // ปุ่มเลือกโหมด 4x4 หรือ 9x9
+        if (this.tabMode4x4) {
+            this.tabMode4x4.addEventListener('click', () => {
+                if (this.gameMode !== '4x4') this.newGame('4x4', 'easy');
+            });
+        }
+        if (this.tabMode9x9) {
+            this.tabMode9x9.addEventListener('click', () => {
+                if (this.gameMode !== '9x9') this.newGame('9x9', 'easy');
+            });
+        }
 
         // ปุ่มควบคุมการเล่น
         document.getElementById('btn-undo').addEventListener('click', () => this.undo());
@@ -756,7 +843,7 @@ class SudokuApp {
         this.pauseBtn.addEventListener('click', () => this.togglePause());
         this.pauseOverlay.addEventListener('click', () => this.togglePause());
 
-        // ปุ่ม Numpad 1-9
+        // ปุ่ม Numpad (Delegation)
         this.numpadEl.addEventListener('click', (e) => {
             const btn = e.target.closest('.numpad-btn');
             if (btn && btn.dataset.val) {
@@ -764,7 +851,7 @@ class SudokuApp {
             }
         });
 
-        // ปุ่มเมนูเกมใหม่และเลือกระดับความยาก
+        // เมนูเกมใหม่
         const newGameDropdown = document.getElementById('new-game-dropdown');
         document.getElementById('btn-new-game-main').addEventListener('click', () => {
             newGameDropdown.classList.toggle('hidden');
@@ -774,16 +861,15 @@ class SudokuApp {
             btn.addEventListener('click', (e) => {
                 const diff = e.currentTarget.dataset.difficulty;
                 newGameDropdown.classList.add('hidden');
-                this.newGame(diff);
+                this.newGame(this.gameMode, diff);
             });
         });
 
-        // ปุ่มใน Modal ต่างๆ
         document.querySelectorAll('.btn-restart-game').forEach(btn => {
-            btn.addEventListener('click', () => this.newGame(this.difficulty));
+            btn.addEventListener('click', () => this.newGame(this.gameMode, this.difficulty));
         });
 
-        // ปุ่มตั้งค่าการเข้าถึง
+        // การเข้าถึง
         document.getElementById('btn-toggle-tts').addEventListener('click', () => this.toggleTTS());
         document.getElementById('btn-toggle-sound').addEventListener('click', () => this.toggleSound());
         document.getElementById('btn-toggle-contrast').addEventListener('click', () => this.toggleHighContrast());
@@ -796,7 +882,6 @@ class SudokuApp {
             btn.addEventListener('click', () => this.closeModals());
         });
 
-        // ปิด Dropdown เมื่อคลิกที่อื่น
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.new-game-wrapper')) {
                 newGameDropdown.classList.add('hidden');
@@ -806,7 +891,6 @@ class SudokuApp {
 
     // จัดการการกดแป้นพิมพ์
     handleKeyDown(e) {
-        // ถ้า Modal กำลังเปิดอยู่
         if (!this.helpModal.classList.contains('hidden')) {
             if (e.key === 'Escape') {
                 this.helpModal.classList.add('hidden');
@@ -815,7 +899,6 @@ class SudokuApp {
             return;
         }
 
-        // จัดการปุ่มลูกศรเลื่อนช่อง
         let r = this.selectedRow;
         let c = this.selectedCol;
         let moved = false;
@@ -830,7 +913,7 @@ class SudokuApp {
             case 'ArrowDown':
             case 's':
             case 'S':
-                if (r < 8) { r++; moved = true; }
+                if (r < this.size - 1) { r++; moved = true; }
                 else { this.audio.playEdgeBump(); }
                 break;
             case 'ArrowLeft':
@@ -842,12 +925,15 @@ class SudokuApp {
             case 'ArrowRight':
             case 'd':
             case 'D':
-                if (c < 8) { c++; moved = true; }
+                if (c < this.size - 1) { c++; moved = true; }
                 else { this.audio.playEdgeBump(); }
                 break;
-            case '1': case '2': case '3': case '4': case '5':
-            case '6': case '7': case '8': case '9':
-                this.inputNumber(parseInt(e.key, 10));
+            case '1': case '2': case '3': case '4':
+            case '5': case '6': case '7': case '8': case '9':
+                const digit = parseInt(e.key, 10);
+                if (digit <= this.size) {
+                    this.inputNumber(digit);
+                }
                 e.preventDefault();
                 return;
             case 'Backspace':
@@ -879,36 +965,43 @@ class SudokuApp {
                 this.giveHint();
                 e.preventDefault();
                 return;
+            case 'm':
+            case 'M': // สลับโหมด 4x4 / 9x9 ผ่านคีย์บอร์ด
+                const nextMode = (this.gameMode === '4x4') ? '9x9' : '4x4';
+                this.newGame(nextMode, 'easy');
+                e.preventDefault();
+                return;
             case 'r':
-            case 'R': // อ่านทั้งแถว
+            case 'R':
                 this.tts.announceRow(r, this.puzzle[r]);
                 e.preventDefault();
                 return;
             case 'c':
-            case 'C': // อ่านทั้งคอลัมน์
+            case 'C':
                 const colVals = [];
-                for (let rowIdx = 0; rowIdx < 9; rowIdx++) {
+                for (let rowIdx = 0; rowIdx < this.size; rowIdx++) {
                     colVals.push(this.puzzle[rowIdx][c]);
                 }
                 this.tts.announceCol(c, colVals);
                 e.preventDefault();
                 return;
             case 'b':
-            case 'B': // อ่านทั้งบล็อก 3x3
-                const blockRow = Math.floor(r / 3);
-                const blockCol = Math.floor(c / 3);
-                const blockNum = blockRow * 3 + blockCol + 1;
+            case 'B':
+                const numBlocksPerRow = this.size / this.boxSize;
+                const blockRow = Math.floor(r / this.boxSize);
+                const blockCol = Math.floor(c / this.boxSize);
+                const blockNum = blockRow * numBlocksPerRow + blockCol + 1;
                 const blockVals = [];
-                for (let br = 0; br < 3; br++) {
-                    for (let bc = 0; bc < 3; bc++) {
-                        blockVals.push(this.puzzle[blockRow * 3 + br][blockCol * 3 + bc]);
+                for (let br = 0; br < this.boxSize; br++) {
+                    for (let bc = 0; bc < this.boxSize; bc++) {
+                        blockVals.push(this.puzzle[blockRow * this.boxSize + br][blockCol * this.boxSize + bc]);
                     }
                 }
                 this.tts.announceBlock(blockNum, blockVals);
                 e.preventDefault();
                 return;
             case ' ':
-            case 'Enter': // ทวนข้อมูลช่องปัจจุบัน หรือ Resume เมื่อ Pause
+            case 'Enter':
                 if (this.isPaused) {
                     this.togglePause();
                 } else {
@@ -923,7 +1016,7 @@ class SudokuApp {
             case '?':
             case 'F1':
                 this.helpModal.classList.remove('hidden');
-                this.tts.speak('คู่มือแป้นพิมพ์: ใช้ลูกศรเพื่อเลื่อนช่อง, กดเลข 1 ถึง 9 เพื่อใส่เลข, กด N สลับโหมดโน้ต, กด Backspace เพื่อลบ, กด R ฟังทั้งแถว, กด C ฟังทั้งคอลัมน์, กด B ฟังทั้งบล็อก, กด H ขอคำใบ้, กด Escape เพื่อปิดหน้านี้', true);
+                this.tts.speak('คู่มือแป้นพิมพ์: ใช้ลูกศรเพื่อเลื่อนช่อง, กดตัวเลขเพื่อใส่เลข, กด M สลับโหมดตาราง 4x4 หรือ 9x9, กด N สลับโหมดโน้ต, กด Backspace เพื่อลบ, กด R ฟังทั้งแถว, กด C ฟังทั้งคอลัมน์, กด B ฟังทั้งบล็อก, กด H ขอคำใบ้, กด Escape เพื่อปิดหน้านี้', true);
                 e.preventDefault();
                 return;
             case 'Escape':
@@ -938,7 +1031,6 @@ class SudokuApp {
     }
 }
 
-// เริ่มต้นแอปเมื่อโหลดหน้าเสร็จสมบูรณ์
 document.addEventListener('DOMContentLoaded', () => {
     window.app = new SudokuApp();
 });

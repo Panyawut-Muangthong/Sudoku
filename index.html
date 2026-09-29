@@ -76,6 +76,18 @@
 
     <!-- Main Game Area -->
     <main class="main-content" role="main">
+        <!-- Mode Switcher Tabs (2 โหมด: 4x4 บล็อก 2x2 และ 9x9 บล็อก 3x3) -->
+        <div class="mode-switcher-bar" role="tablist" aria-label="เลือกโหมดขนาดตารางซูโดกุ">
+            <button id="tab-mode-4x4" class="mode-tab-btn active" data-mode="4x4" role="tab" aria-selected="true" aria-controls="sudoku-board">
+                <span class="mode-title">1. ตาราง 4×4 (บล็อก 2×2)</span>
+                <span class="mode-tag">โหมดฝึกเริ่มต้น 16 ช่อง</span>
+            </button>
+            <button id="tab-mode-9x9" class="mode-tab-btn" data-mode="9x9" role="tab" aria-selected="false" aria-controls="sudoku-board">
+                <span class="mode-title">2. ตาราง 9×9 (บล็อก 3×3)</span>
+                <span class="mode-tag">โหมดปกติ 81 ช่อง</span>
+            </button>
+        </div>
+
         <!-- Game Statistics & Timer Info Bar -->
         <section class="game-info-bar" aria-label="แถบสถานะเกม">
             <div class="info-item">
@@ -267,6 +279,10 @@
                 <div class="help-row">
                     <span>ลบตัวเลขหรือโน้ต</span>
                     <span class="help-key">Backspace หรือ Delete</span>
+                </div>
+                <div class="help-row">
+                    <span>สลับโหมดตาราง 4×4 / 9×9</span>
+                    <span class="help-key">ปุ่ม M</span>
                 </div>
                 <div class="help-row">
                     <span>สลับโหมดจดบันทึก (Notes)</span>

@@ -227,6 +227,78 @@ body {
     width: 100%;
 }
 
+/* Mode Switcher Tabs */
+.mode-switcher-bar {
+    width: var(--board-size);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 1rem;
+    transition: width 0.2s ease;
+}
+
+.mode-tab-btn {
+    background-color: var(--bg-surface);
+    border: 2px solid var(--border-light);
+    border-radius: 10px;
+    padding: 0.65rem 0.75rem;
+    cursor: pointer;
+    font-family: inherit;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    transition: all 0.15s ease;
+}
+
+.mode-tab-btn:hover, .mode-tab-btn:focus-visible {
+    border-color: var(--primary-blue);
+    background-color: var(--primary-light-blue);
+    outline: none;
+}
+
+.mode-tab-btn.active {
+    border-color: var(--primary-blue);
+    background-color: var(--primary-light-blue);
+    box-shadow: 0 2px 8px rgba(50, 90, 175, 0.15);
+}
+
+.mode-tab-btn .mode-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.mode-tab-btn.active .mode-title {
+    color: var(--primary-blue);
+}
+
+.mode-tab-btn .mode-tag {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+body.high-contrast .mode-tab-btn {
+    border-color: #ffff00;
+    background-color: #121212;
+    color: #ffffff;
+}
+
+body.high-contrast .mode-tab-btn.active {
+    background-color: #222200;
+    border-color: #ffff00;
+    box-shadow: 0 0 10px rgba(255, 255, 0, 0.3);
+}
+
+body.high-contrast .mode-tab-btn.active .mode-title {
+    color: #ffff00;
+}
+
+body.high-contrast .mode-tab-btn .mode-tag {
+    color: #dddddd;
+}
+
 .game-info-bar {
     width: var(--board-size);
     display: flex;
@@ -235,6 +307,7 @@ body {
     margin-bottom: 0.75rem;
     font-size: 0.95rem;
     color: var(--text-muted);
+    transition: width 0.2s ease;
 }
 
 .info-item {
@@ -519,6 +592,57 @@ body {
     display: grid;
     grid-template-columns: repeat(9, 1fr);
     gap: 6px;
+    transition: width 0.2s ease;
+}
+
+/* 4x4 Grid Board Layout (บล็อก 2x2 จำนวน 4 บล็อก) */
+.board-wrapper.mode-4x4 {
+    width: min(88vw, 360px);
+    height: min(88vw, 360px);
+}
+
+.sudoku-board.mode-4x4 {
+    grid-template-rows: repeat(4, 1fr);
+}
+
+.sudoku-board.mode-4x4 .sudoku-row {
+    grid-template-columns: repeat(4, 1fr);
+}
+
+.sudoku-board.mode-4x4 .cell-value {
+    font-size: min(12vw, 44px);
+    font-weight: 600;
+}
+
+.sudoku-board.mode-4x4 .cell-notes {
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+}
+
+.sudoku-board.mode-4x4 .note-item {
+    font-size: min(4vw, 16px);
+}
+
+.mode-switcher-bar.mode-4x4,
+.game-info-bar.mode-4x4,
+.hint-banner.mode-4x4,
+.action-controls.mode-4x4 {
+    width: min(88vw, 360px);
+}
+
+.numpad-container.mode-4x4 {
+    width: min(88vw, 360px);
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+}
+
+.numpad-container.mode-4x4 .numpad-btn {
+    aspect-ratio: 1 / 1.1;
+    padding: 0.5rem;
+}
+
+.numpad-container.mode-4x4 .numpad-btn .num-val {
+    font-size: 2rem;
 }
 
 .numpad-btn {
